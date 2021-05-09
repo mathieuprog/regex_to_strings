@@ -60,6 +60,30 @@ defmodule RegexToStrings do
     do_regex_to_strings(rest_chars, current_values, :root, result)
   end
 
+  defp do_regex_to_strings([char, "{", min, ",", max, "}" | rest_chars], current_values, :root, result) do
+    strings =
+      String.to_integer(min)..String.to_integer(max)
+      |> Enum.to_list()
+      |> Enum.map(&String.duplicate(char, &1))
+
+    current_values =
+      if current_values == [], do: [""], else: current_values
+
+    current_values =
+      for i <- current_values, j <- strings, do:  i <> j
+
+    do_regex_to_strings(rest_chars, current_values, :root, result)
+  end
+
+  defp do_regex_to_strings([char, "{", repeat, "}" | rest_chars], current_values, :root, result) do
+    repeat = String.to_integer(repeat)
+    string = String.duplicate(char, repeat)
+
+    current_values = Enum.map(current_values, &(&1 <> string))
+
+    do_regex_to_strings(rest_chars, current_values, :root, result)
+  end
+
   defp do_regex_to_strings(["(" | _] = chars, current_values, mode, result) do
     string = Enum.join(chars)
     [group_string] = Regex.run(~r/^\(.+\)/, string)

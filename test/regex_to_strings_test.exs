@@ -40,6 +40,12 @@ defmodule RegexToStringsTest do
     assert regex_to_strings!("[AC-E]x") == ["Ax", "Cx", "Dx", "Ex"]
   end
 
+  test "match-count interator" do
+    assert regex_to_strings!("0a{1,3}1") == ["0a1", "0aa1", "0aaa1"]
+    assert regex_to_strings!("0a{3}1") == ["0aaa1"]
+    assert regex_to_strings!("0(16|7{1,3})x") == ["016x", "07x", "077x", "0777x"]
+  end
+
   test "raise on unsupported operations" do
     assert_raise RuntimeError, "unsupported metacharacter \".\"", fn ->
       regex_to_strings!("1.1")

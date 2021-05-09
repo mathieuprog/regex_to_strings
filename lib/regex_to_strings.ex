@@ -9,12 +9,34 @@ defmodule RegexToStrings do
   Get the strings a regex will match.
   """
   def regex_to_strings(regex_string) do
+    maybe_regex_to_strings(regex_string, raise: false)
+  end
+
+  def regex_to_strings!(regex_string) do
+    maybe_regex_to_strings(regex_string, raise: true)
+  end
+
+  def maybe_regex_to_strings(regex_string, raise: raise?) do
     regex_string
     |> String.replace("?:", "")
-    |> raise_if_unsupported_metacharacter()
-    |> String.graphemes()
-    |> fill_ranges()
-    |> do_regex_to_strings([], [:root], [])
+    |> check_unsupported_metacharacter(raise: raise?)
+    |> case do
+      :unsupported_regex ->
+        :unsupported_regex
+
+      regex_string ->
+        values =
+          regex_string
+          |> String.graphemes()
+          |> fill_ranges()
+          |> do_regex_to_strings([], [:root], [])
+
+        if raise? do
+          values
+        else
+          {:ok, values}
+        end
+    end
   end
 
   defp do_regex_to_strings([], current_values, _, result) do
@@ -93,14 +115,23 @@ defmodule RegexToStrings do
     end
   end
 
-  defp raise_if_unsupported_metacharacter(regex_string) do
+  defp check_unsupported_metacharacter(regex_string, raise: raise?) do
     @unsupported_metacharacters
-    |> Enum.each(fn metacharacter ->
+    |> Enum.any?(fn metacharacter ->
       if String.contains?(regex_string, metacharacter) do
-        raise "unsupported metacharacter \"#{metacharacter}\""
+        if raise? do
+          raise "unsupported metacharacter \"#{metacharacter}\""
+        end
+
+        :unsupported_regex
       end
     end)
+    |> case do
+      true ->
+        :unsupported_regex
 
-    regex_string
+      false  ->
+        regex_string
+    end
   end
 end

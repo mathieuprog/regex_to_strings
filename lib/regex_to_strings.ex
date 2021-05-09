@@ -52,29 +52,6 @@ defmodule RegexToStrings do
     do_regex_to_strings(rest_chars, current_values, :root, result)
   end
 
-  defp do_regex_to_strings(["[" | _] = chars, current_values, mode, result) do
-    string = Enum.join(chars)
-    [char_class_string] = Regex.run(~r/^\[.+?\]/, string)
-    string_after_char_class = String.replace(string, char_class_string, "")
-
-    char_class_chars =
-      char_class_string
-      |> String.trim("[")
-      |> String.trim("]")
-      |> String.graphemes()
-
-    current_values =
-      if current_values == [], do: [""], else: current_values
-
-    current_values =
-      for i <- current_values, j <- char_class_chars, do:  i <> j
-
-    string_after_char_class
-    |> String.graphemes()
-    |> do_regex_to_strings(current_values, mode, result)
-
-  end
-
   defp do_regex_to_strings([char, "{", min, ",", max, "}" | rest_chars], current_values, :root, result) do
     strings =
       String.to_integer(min)..String.to_integer(max)
@@ -99,20 +76,55 @@ defmodule RegexToStrings do
     do_regex_to_strings(rest_chars, current_values, :root, result)
   end
 
-  defp do_regex_to_strings(["(" | rest_chars] = chars, current_values, mode, result) do
-    {chars_in_group, 0} =
-      Enum.reduce_while(rest_chars, {[], 0}, fn
-        "(", {chars_in_group, parentheses_nesting} ->
-          {:cont, {["(" | chars_in_group], parentheses_nesting + 1}}
+  defp do_regex_to_strings(["[" | _] = chars, current_values, mode, result) do
+    string = Enum.join(chars)
+    [char_class_string] = Regex.run(~r/^\[.+?\]\??/, string)
 
-        ")", {chars_in_group, 0} ->
-          {:halt, {chars_in_group, 0}}
+    string_after_char_class = String.replace(string, char_class_string, "")
 
-        ")", {chars_in_group, parentheses_nesting} ->
-          {:cont, {[")" | chars_in_group], parentheses_nesting - 1}}
+    optional? = String.ends_with?(char_class_string, "?")
 
-        char, {chars_in_group, parentheses_nesting} ->
-          {:cont, {[char | chars_in_group], parentheses_nesting}}
+    char_class_chars =
+      char_class_string
+      |> String.trim_trailing("?")
+      |> String.trim_trailing("]")
+      |> String.trim_leading("[")
+      |> String.graphemes()
+
+    char_class_chars = if optional?, do: ["" | char_class_chars], else: char_class_chars
+
+    current_values =
+      if current_values == [], do: [""], else: current_values
+
+    current_values =
+      for i <- current_values, j <- char_class_chars, do:  i <> j
+
+    string_after_char_class
+    |> String.graphemes()
+    |> do_regex_to_strings(current_values, mode, result)
+
+  end
+
+  defp do_regex_to_strings(["(" | _] = chars, current_values, mode, result) do
+    {chars_in_group, 0, :found_closing} =
+      Enum.reduce_while(chars, {[], -1, :not_found_closing}, fn
+        "(", {chars_in_group, parentheses_nesting, :not_found_closing} ->
+          {:cont, {["(" | chars_in_group], parentheses_nesting + 1, :not_found_closing}}
+
+        ")", {chars_in_group, 0, :not_found_closing} ->
+          {:cont, {[")" | chars_in_group], 0, :found_closing}}
+
+        ")", {chars_in_group, parentheses_nesting, :not_found_closing} ->
+          {:cont, {[")" | chars_in_group], parentheses_nesting - 1, :not_found_closing}}
+
+        char, {chars_in_group, parentheses_nesting, :not_found_closing} ->
+          {:cont, {[char | chars_in_group], parentheses_nesting, :not_found_closing}}
+
+        "?", {chars_in_group, 0, :found_closing} ->
+          {:halt, {["?" | chars_in_group], 0, :found_closing}}
+
+        _, {chars_in_group, 0, :found_closing} ->
+          {:halt, {chars_in_group, 0, :found_closing}}
       end)
 
     group_string =
@@ -120,12 +132,19 @@ defmodule RegexToStrings do
       |> Enum.reverse()
       |> Enum.join()
 
-    string_after_group = String.replace(Enum.join(chars), "(" <> group_string <> ")", "")
+    string_after_group = String.replace(Enum.join(chars), group_string, "")
+
+    optional? = String.ends_with?(group_string, "?")
 
     strings_found_in_group =
       group_string
+      |> String.trim_trailing("?")
+      |> String.trim_trailing(")")
+      |> String.trim_leading("(")
       |> String.graphemes()
       |> do_regex_to_strings([], :root, [])
+
+    strings_found_in_group = if optional?, do: ["" | strings_found_in_group], else: strings_found_in_group
 
     current_values =
       if current_values == [], do: [""], else: current_values

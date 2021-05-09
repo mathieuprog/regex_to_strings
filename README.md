@@ -16,6 +16,8 @@ regex_to_strings!("(16|7?[56])24") == ["1624", "524", "7524", "624", "7624"]
 regex_to_strings!("1[03-59]") == ["10", "13", "14", "15", "19"]
 
 regex_to_strings("1+*2") == :unsupported_regex
+
+regex_to_strings!("1+*2") # RuntimeError: unsupported metacharacter "."
 ```
 
 ## Installation

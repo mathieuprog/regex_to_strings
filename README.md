@@ -27,7 +27,7 @@ Add `regex_to_strings` for Elixir as a dependency in your `mix.exs` file:
 ```elixir
 def deps do
   [
-    {:regex_to_strings, "~> 0.3.0"}
+    {:regex_to_strings, "~> 0.4.0"}
   ]
 end
 ```

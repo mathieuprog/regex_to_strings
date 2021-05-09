@@ -36,6 +36,8 @@ defmodule RegexToStringsTest do
 
   test "regex with range" do
     assert regex_to_strings!("1[03-79]|[2-9]") == ["10", "13", "14", "15", "16", "17", "19", "2", "3", "4", "5", "6", "7", "8", "9"]
+    assert regex_to_strings!("1[ak-n]") == ["1a", "1k", "1l", "1m", "1n"]
+    assert regex_to_strings!("[AC-E]x") == ["Ax", "Cx", "Dx", "Ex"]
   end
 
   test "raise on unsupported operations" do

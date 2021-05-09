@@ -97,12 +97,14 @@ defmodule RegexToStrings do
     index = Enum.find_index(list_chars, &(&1 == "-"))
 
     if index do
-      range_start = Enum.at(list_chars, index - 1) |> String.to_integer()
-      range_end = Enum.at(list_chars, index + 1) |> String.to_integer()
+      <<range_start::utf8>> = Enum.at(list_chars, index - 1)
+      <<range_end::utf8>> = Enum.at(list_chars, index + 1)
 
       values =
         Range.new(range_start, range_end)
         |> Enum.to_list()
+        |> List.to_string()
+        |> String.graphemes()
         |> Enum.slice(1..-2)
         |> Enum.map(&to_string(&1))
 

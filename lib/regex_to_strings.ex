@@ -16,7 +16,7 @@ defmodule RegexToStrings do
     maybe_regex_to_strings(regex_string, raise: true)
   end
 
-  def maybe_regex_to_strings(regex_string, raise: raise?) do
+  defp maybe_regex_to_strings(regex_string, raise: raise?) do
     regex_string
     |> String.replace("?:", "")
     |> check_unsupported_metacharacter(raise: raise?)

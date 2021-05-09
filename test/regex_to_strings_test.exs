@@ -28,10 +28,12 @@ defmodule RegexToStringsTest do
   test "regex with nested group" do
     assert regex_to_strings!("8(024)9") == ["80249"]
     assert regex_to_strings!("8(024|5(1[20]|1)3)9") == ["80249", "851239", "851039", "85139"]
+    assert regex_to_strings!("1(23|12)|3(64|57)0") == ["123", "112", "3640", "3570"]
+    assert regex_to_strings!("1(23|1(5|2[45]3)2)|3(64|57)0") == ["123", "1152", "112432", "112532", "3640", "3570"]
   end
 
   test "one or none" do
-    assert regex_to_strings!("74?576|(16|7?[56])24") == ["7576", "74576", "1624", "524", "7524", "624", "7624"]
+    assert regex_to_strings!("74?576|(16|7?[56])24") == ["7576", "74576", "1624", "524", "624", "7524", "7624"]
   end
 
   test "regex with range" do

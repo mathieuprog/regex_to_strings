@@ -52,12 +52,27 @@ defmodule RegexToStrings do
     do_regex_to_strings(rest_chars, current_values, :root, result)
   end
 
-  defp do_regex_to_strings(["[" | rest_chars], current_values, :root, result) do
-    do_regex_to_strings(rest_chars, [], {:character_class, current_values}, result)
-  end
+  defp do_regex_to_strings(["[" | _] = chars, current_values, mode, result) do
+    string = Enum.join(chars)
+    [char_class_string] = Regex.run(~r/^\[.+?\]/, string)
+    string_after_char_class = String.replace(string, char_class_string, "")
 
-  defp do_regex_to_strings(["]" | rest_chars], current_values, {:character_class, _}, result) do
-    do_regex_to_strings(rest_chars, current_values, :root, result)
+    char_class_chars =
+      char_class_string
+      |> String.trim("[")
+      |> String.trim("]")
+      |> String.graphemes()
+
+    current_values =
+      if current_values == [], do: [""], else: current_values
+
+    current_values =
+      for i <- current_values, j <- char_class_chars, do:  i <> j
+
+    string_after_char_class
+    |> String.graphemes()
+    |> do_regex_to_strings(current_values, mode, result)
+
   end
 
   defp do_regex_to_strings([char, "{", min, ",", max, "}" | rest_chars], current_values, :root, result) do
@@ -84,15 +99,31 @@ defmodule RegexToStrings do
     do_regex_to_strings(rest_chars, current_values, :root, result)
   end
 
-  defp do_regex_to_strings(["(" | _] = chars, current_values, mode, result) do
-    string = Enum.join(chars)
-    [group_string] = Regex.run(~r/^\(.+\)/, string)
-    string_after_group = String.replace(string, group_string, "")
+  defp do_regex_to_strings(["(" | rest_chars] = chars, current_values, mode, result) do
+    {chars_in_group, 0} =
+      Enum.reduce_while(rest_chars, {[], 0}, fn
+        "(", {chars_in_group, parentheses_nesting} ->
+          {:cont, {["(" | chars_in_group], parentheses_nesting + 1}}
+
+        ")", {chars_in_group, 0} ->
+          {:halt, {chars_in_group, 0}}
+
+        ")", {chars_in_group, parentheses_nesting} ->
+          {:cont, {[")" | chars_in_group], parentheses_nesting - 1}}
+
+        char, {chars_in_group, parentheses_nesting} ->
+          {:cont, {[char | chars_in_group], parentheses_nesting}}
+      end)
+
+    group_string =
+      chars_in_group
+      |> Enum.reverse()
+      |> Enum.join()
+
+    string_after_group = String.replace(Enum.join(chars), "(" <> group_string <> ")", "")
 
     strings_found_in_group =
       group_string
-      |> String.trim("(")
-      |> String.trim(")")
       |> String.graphemes()
       |> do_regex_to_strings([], :root, [])
 
@@ -110,11 +141,6 @@ defmodule RegexToStrings do
   defp do_regex_to_strings([char | rest_chars], current_values, :root, result) do
     current_values = if current_values == [], do: [""], else: current_values
     do_regex_to_strings(rest_chars, Enum.map(current_values, &(&1 <> char)), :root, result)
-  end
-
-  defp do_regex_to_strings([char | rest_chars], current_values, {:character_class, chars_before_char_class} = mode, result) do
-    chars_before_char_class = if chars_before_char_class == [], do: [""], else: chars_before_char_class
-    do_regex_to_strings(rest_chars, current_values ++ Enum.map(chars_before_char_class, &(&1 <> char)), mode, result)
   end
 
   defp fill_ranges(list_chars) do

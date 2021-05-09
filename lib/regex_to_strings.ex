@@ -123,7 +123,7 @@ defmodule RegexToStrings do
           raise "unsupported metacharacter \"#{metacharacter}\""
         end
 
-        :unsupported_regex
+        true
       end
     end)
     |> case do

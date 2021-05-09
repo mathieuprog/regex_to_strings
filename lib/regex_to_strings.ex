@@ -3,7 +3,7 @@ defmodule RegexToStrings do
   Get the strings a regex will match.
   """
 
-  @unsupported_metacharacters [".", "*", "+"]
+  @unsupported_metacharacters [".", "*", "+", ",}"]
 
   @doc ~S"""
   Get the strings a regex will match.

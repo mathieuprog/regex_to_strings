@@ -52,5 +52,7 @@ defmodule RegexToStringsTest do
     end
 
     assert regex_to_strings("1.+2") == :unsupported_regex
+
+    assert regex_to_strings("a{1,}") == :unsupported_regex
   end
 end

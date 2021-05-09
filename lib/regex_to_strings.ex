@@ -29,7 +29,7 @@ defmodule RegexToStrings do
           regex_string
           |> String.graphemes()
           |> fill_ranges()
-          |> do_regex_to_strings([], [:root], [])
+          |> do_regex_to_strings([], :root, [])
 
         if raise? do
           values
@@ -43,24 +43,24 @@ defmodule RegexToStrings do
     result ++ current_values
   end
 
-  defp do_regex_to_strings(["|" | rest_chars], current_values, [:root | _] = stack_ops, result) do
-    do_regex_to_strings(rest_chars, [], stack_ops, result ++ current_values)
+  defp do_regex_to_strings(["|" | rest_chars], current_values, :root, result) do
+    do_regex_to_strings(rest_chars, [], :root, result ++ current_values)
   end
 
-  defp do_regex_to_strings(["?" | rest_chars], current_values, [:root | _] = stack_ops, result) do
+  defp do_regex_to_strings(["?" | rest_chars], current_values, :root, result) do
     current_values = Enum.map(current_values, &String.slice(&1, 0..-2)) ++ current_values
-    do_regex_to_strings(rest_chars, current_values, stack_ops, result)
+    do_regex_to_strings(rest_chars, current_values, :root, result)
   end
 
-  defp do_regex_to_strings(["[" | rest_chars], current_values, stack_ops, result) do
-    do_regex_to_strings(rest_chars, [], [{:character_class, current_values} | stack_ops], result)
+  defp do_regex_to_strings(["[" | rest_chars], current_values, :root, result) do
+    do_regex_to_strings(rest_chars, [], {:character_class, current_values}, result)
   end
 
-  defp do_regex_to_strings(["]" | rest_chars], current_values, [{:character_class, _}, prev_mode | rest_modes], result) do
-    do_regex_to_strings(rest_chars, current_values, [prev_mode | rest_modes], result)
+  defp do_regex_to_strings(["]" | rest_chars], current_values, {:character_class, _}, result) do
+    do_regex_to_strings(rest_chars, current_values, :root, result)
   end
 
-  defp do_regex_to_strings(["(" | _] = chars, current_values, stack_ops, result) do
+  defp do_regex_to_strings(["(" | _] = chars, current_values, mode, result) do
     string = Enum.join(chars)
     [group_string] = Regex.run(~r/^\(.+\)/, string)
     string_after_group = String.replace(string, group_string, "")
@@ -70,7 +70,7 @@ defmodule RegexToStrings do
       |> String.trim("(")
       |> String.trim(")")
       |> String.graphemes()
-      |> do_regex_to_strings([], [:root], [])
+      |> do_regex_to_strings([], :root, [])
 
     current_values =
       if current_values == [], do: [""], else: current_values
@@ -80,17 +80,17 @@ defmodule RegexToStrings do
 
     string_after_group
     |> String.graphemes()
-    |> do_regex_to_strings(current_values, stack_ops, result)
+    |> do_regex_to_strings(current_values, mode, result)
   end
 
-  defp do_regex_to_strings([char | rest_chars], current_values, [:root | _] = stack_ops, result) do
+  defp do_regex_to_strings([char | rest_chars], current_values, :root, result) do
     current_values = if current_values == [], do: [""], else: current_values
-    do_regex_to_strings(rest_chars, Enum.map(current_values, &(&1 <> char)), stack_ops, result)
+    do_regex_to_strings(rest_chars, Enum.map(current_values, &(&1 <> char)), :root, result)
   end
 
-  defp do_regex_to_strings([char | rest_chars], current_values, [{:character_class, chars_before_char_class} | _] = stack_ops, result) do
+  defp do_regex_to_strings([char | rest_chars], current_values, {:character_class, chars_before_char_class} = mode, result) do
     chars_before_char_class = if chars_before_char_class == [], do: [""], else: chars_before_char_class
-    do_regex_to_strings(rest_chars, current_values ++ Enum.map(chars_before_char_class, &(&1 <> char)), stack_ops, result)
+    do_regex_to_strings(rest_chars, current_values ++ Enum.map(chars_before_char_class, &(&1 <> char)), mode, result)
   end
 
   defp fill_ranges(list_chars) do

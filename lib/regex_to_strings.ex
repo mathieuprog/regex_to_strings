@@ -18,6 +18,7 @@ defmodule RegexToStrings do
 
   defp maybe_regex_to_strings(regex_string, raise: raise?) do
     regex_string
+    # filter out non-capturing group syntax
     |> String.replace("?:", "")
     |> check_unsupported_metacharacter(raise: raise?)
     |> case do
@@ -28,6 +29,7 @@ defmodule RegexToStrings do
         values =
           regex_string
           |> String.graphemes()
+          # replace ranges such as "c-f" by "cdef"
           |> fill_ranges()
           |> do_regex_to_strings([], :root, [])
 
@@ -91,7 +93,8 @@ defmodule RegexToStrings do
       |> String.trim_leading("[")
       |> String.graphemes()
 
-    char_class_chars = if optional?, do: ["" | char_class_chars], else: char_class_chars
+    char_class_chars =
+      if optional?, do: ["" | char_class_chars], else: char_class_chars
 
     current_values =
       if current_values == [], do: [""], else: current_values
@@ -106,6 +109,7 @@ defmodule RegexToStrings do
   end
 
   defp do_regex_to_strings(["(" | _] = chars, current_values, mode, result) do
+    # find the string until the corresponding closing parenthesis
     {chars_in_group, 0, :found_closing} =
       Enum.reduce_while(chars, {[], -1, :not_found_closing}, fn
         "(", {chars_in_group, parentheses_nesting, :not_found_closing} ->
@@ -144,7 +148,8 @@ defmodule RegexToStrings do
       |> String.graphemes()
       |> do_regex_to_strings([], :root, [])
 
-    strings_found_in_group = if optional?, do: ["" | strings_found_in_group], else: strings_found_in_group
+    strings_found_in_group =
+      if optional?, do: ["" | strings_found_in_group], else: strings_found_in_group
 
     current_values =
       if current_values == [], do: [""], else: current_values

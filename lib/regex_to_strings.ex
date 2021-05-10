@@ -31,7 +31,7 @@ defmodule RegexToStrings do
           |> String.graphemes()
           # replace ranges such as "c-f" by "cdef"
           |> fill_ranges()
-          |> do_regex_to_strings([], :root, [])
+          |> do_regex_to_strings([], [])
 
         if raise? do
           values
@@ -41,20 +41,20 @@ defmodule RegexToStrings do
     end
   end
 
-  defp do_regex_to_strings([], current_values, _, result) do
+  defp do_regex_to_strings([], current_values, result) do
     result ++ current_values
   end
 
-  defp do_regex_to_strings(["|" | rest_chars], current_values, :root, result) do
-    do_regex_to_strings(rest_chars, [], :root, result ++ current_values)
+  defp do_regex_to_strings(["|" | rest_chars], current_values, result) do
+    do_regex_to_strings(rest_chars, [], result ++ current_values)
   end
 
-  defp do_regex_to_strings(["?" | rest_chars], current_values, :root, result) do
+  defp do_regex_to_strings(["?" | rest_chars], current_values, result) do
     current_values = Enum.map(current_values, &String.slice(&1, 0..-2)) ++ current_values
-    do_regex_to_strings(rest_chars, current_values, :root, result)
+    do_regex_to_strings(rest_chars, current_values, result)
   end
 
-  defp do_regex_to_strings([char, "{", min, ",", max, "}" | rest_chars], current_values, :root, result) do
+  defp do_regex_to_strings([char, "{", min, ",", max, "}" | rest_chars], current_values, result) do
     strings =
       String.to_integer(min)..String.to_integer(max)
       |> Enum.to_list()
@@ -66,19 +66,19 @@ defmodule RegexToStrings do
     current_values =
       for i <- current_values, j <- strings, do:  i <> j
 
-    do_regex_to_strings(rest_chars, current_values, :root, result)
+    do_regex_to_strings(rest_chars, current_values, result)
   end
 
-  defp do_regex_to_strings([char, "{", repeat, "}" | rest_chars], current_values, :root, result) do
+  defp do_regex_to_strings([char, "{", repeat, "}" | rest_chars], current_values, result) do
     repeat = String.to_integer(repeat)
     string = String.duplicate(char, repeat)
 
     current_values = Enum.map(current_values, &(&1 <> string))
 
-    do_regex_to_strings(rest_chars, current_values, :root, result)
+    do_regex_to_strings(rest_chars, current_values, result)
   end
 
-  defp do_regex_to_strings(["[" | _] = chars, current_values, mode, result) do
+  defp do_regex_to_strings(["[" | _] = chars, current_values, result) do
     string = Enum.join(chars)
     [char_class_string] = Regex.run(~r/^\[.+?\]\??/, string)
 
@@ -104,11 +104,11 @@ defmodule RegexToStrings do
 
     string_after_char_class
     |> String.graphemes()
-    |> do_regex_to_strings(current_values, mode, result)
+    |> do_regex_to_strings(current_values, result)
 
   end
 
-  defp do_regex_to_strings(["(" | _] = chars, current_values, mode, result) do
+  defp do_regex_to_strings(["(" | _] = chars, current_values, result) do
     # find the string until the corresponding closing parenthesis
     {chars_in_group, 0, :found_closing} =
       Enum.reduce_while(chars, {[], -1, :not_found_closing}, fn
@@ -146,7 +146,7 @@ defmodule RegexToStrings do
       |> String.trim_trailing(")")
       |> String.trim_leading("(")
       |> String.graphemes()
-      |> do_regex_to_strings([], :root, [])
+      |> do_regex_to_strings([], [])
 
     strings_found_in_group =
       if optional?, do: ["" | strings_found_in_group], else: strings_found_in_group
@@ -159,12 +159,12 @@ defmodule RegexToStrings do
 
     string_after_group
     |> String.graphemes()
-    |> do_regex_to_strings(current_values, mode, result)
+    |> do_regex_to_strings(current_values, result)
   end
 
-  defp do_regex_to_strings([char | rest_chars], current_values, :root, result) do
+  defp do_regex_to_strings([char | rest_chars], current_values, result) do
     current_values = if current_values == [], do: [""], else: current_values
-    do_regex_to_strings(rest_chars, Enum.map(current_values, &(&1 <> char)), :root, result)
+    do_regex_to_strings(rest_chars, Enum.map(current_values, &(&1 <> char)), result)
   end
 
   defp fill_ranges(list_chars) do
